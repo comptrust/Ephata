@@ -1,0 +1,6 @@
+{
+  "name": "Ephata Consulting - Académie & Formations en Ligne",
+  "description": "Plateforme e-learning officielle d'Ephata Consulting Group (Sicap liberté 5A, Dakar Sénégal) : Développement personnel, Management des ONG, Entrepreneuriat et Coaching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
