@@ -7,6 +7,7 @@ import courseOngFinance from './course_ong_finance.jpg';
 import courseReussirEntrepreneuriat from './course_reussir_entrepreneuriat_1791589281269.jpg';
 import courseSerereDelta from './course_serere_delta_1791588430239.jpg';
 import directorAvatar from './director_avatar_1791971341641.jpg';
+import logoEphata from './logo_ephata.jpeg';
 
 export {
   courseDevPersonnel,
@@ -18,6 +19,7 @@ export {
   courseReussirEntrepreneuriat,
   courseSerereDelta,
   directorAvatar,
+  logoEphata,
 };
 
 export const IMAGES = {
@@ -30,4 +32,5 @@ export const IMAGES = {
   courseReussirEntrepreneuriat,
   courseSerereDelta,
   directorAvatar,
+  logoEphata,
 } as const;
