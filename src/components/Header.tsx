@@ -15,6 +15,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
+import { LaunchCountdown } from './LaunchCountdown';
+
 interface HeaderProps {
   activeTab: 'catalog' | 'dashboard' | 'business-plans' | 'calculator' | 'serere-audio';
   onSelectTab: (tab: 'catalog' | 'dashboard' | 'business-plans' | 'calculator' | 'serere-audio') => void;
@@ -46,6 +48,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline text-slate-300">
               Sicap liberté 5A, Dakar Sénégal
             </span>
+            <span className="hidden md:inline text-slate-500">·</span>
+            <div className="hidden sm:block">
+              <LaunchCountdown variant="compact" />
+            </div>
           </div>
 
           <div className="flex items-center gap-4">

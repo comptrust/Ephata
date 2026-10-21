@@ -25,44 +25,50 @@ export default function App() {
   // Direction / Admin state
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-  // Student Profile & Progress
+  // Student Profile & Progress (Reset for publication)
   const [studentName, setStudentName] = useState<string>(() => {
-    return localStorage.getItem('ephata_student_name') || 'Moussa Ndiaye';
+    const saved = localStorage.getItem('ephata_student_name');
+    if (!saved || saved === 'Moussa Ndiaye') {
+      localStorage.removeItem('ephata_student_name');
+      return '';
+    }
+    return saved;
   });
 
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('ephata_enrolled_courses');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        const isLegacyDemo = Array.isArray(parsed) && parsed.length === 1 && parsed[0] === 'pack-entrepreneuriat' && !localStorage.getItem('ephata_user_has_enrolled');
+        if (!isLegacyDemo && Array.isArray(parsed)) {
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
-    // By default, enroll in Pack Entrepreneuriat for instant discovery!
-    return ['pack-entrepreneuriat'];
+    // Clean slate for public launch: 0 enrolled courses until user enrolls!
+    return [];
   });
 
   const [progressMap, setProgressMap] = useState<Record<string, StudentProgress>>(() => {
     const saved = localStorage.getItem('ephata_progress_map');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          const keys = Object.keys(parsed);
+          if (keys.length === 1 && keys[0] === 'pack-entrepreneuriat' && !localStorage.getItem('ephata_user_has_enrolled')) {
+            return {};
+          }
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
-    // Default starter progress
-    return {
-      'pack-entrepreneuriat': {
-        courseId: 'pack-entrepreneuriat',
-        completedLessonIds: ['ent-m1-l1'],
-        completedQuizIds: [],
-        quizScores: {},
-        enrolledDate: new Date().toISOString(),
-        notes: {}
-      }
-    };
+    return {};
   });
 
   // Modal states
@@ -87,6 +93,19 @@ export default function App() {
     localStorage.setItem('ephata_progress_map', JSON.stringify(progressMap));
   }, [progressMap]);
 
+  // Listen to admin full reset for publication
+  useEffect(() => {
+    const handlePublicationReset = () => {
+      setStudentName('');
+      setEnrolledCourseIds([]);
+      setProgressMap({});
+      setActiveCourseId(null);
+      setActiveTab('catalog');
+    };
+    window.addEventListener('ephata-reset-publication', handlePublicationReset);
+    return () => window.removeEventListener('ephata-reset-publication', handlePublicationReset);
+  }, []);
+
   // Handlers
   const handleUpdateStudentName = (name: string) => {
     setStudentName(name);
@@ -97,6 +116,7 @@ export default function App() {
   };
 
   const handleConfirmEnrollment = (courseId: string) => {
+    localStorage.setItem('ephata_user_has_enrolled', 'true');
     if (!enrolledCourseIds.includes(courseId)) {
       const updated = [...enrolledCourseIds, courseId];
       setEnrolledCourseIds(updated);

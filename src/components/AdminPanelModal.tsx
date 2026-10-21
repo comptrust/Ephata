@@ -14,11 +14,15 @@ import {
   Lock,
   Sparkles,
   BookOpen,
-  Calendar
+  Calendar,
+  RotateCcw,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { COURSES } from '../data/coursesData';
+import { resetCountdownTargetDate, getCountdownTargetDate } from './LaunchCountdown';
 
-interface RegistrationRecord {
+export interface RegistrationRecord {
   id: string;
   name: string;
   phone: string;
@@ -30,63 +34,8 @@ interface RegistrationRecord {
   date: string;
 }
 
-const INITIAL_REGISTRATIONS: RegistrationRecord[] = [
-  {
-    id: 'REG-101',
-    name: 'Moussa Ndiaye',
-    phone: '+221 77 412 88 19',
-    email: 'moussa.ndiaye@gmail.com',
-    courseTitle: 'Gestion Financière et Comptabilité des ONGs',
-    amountFcfa: 100000,
-    paymentMethod: 'Wave',
-    status: 'Validé',
-    date: '2026-10-09'
-  },
-  {
-    id: 'REG-102',
-    name: 'Fatou Binetou Sarr',
-    phone: '+221 78 230 45 67',
-    email: 'fatou.sarr@outlook.com',
-    courseTitle: 'Pack Entrepreneuriat (30 Business Plans PDF)',
-    amountFcfa: 10000,
-    paymentMethod: 'Orange Money',
-    status: 'Validé',
-    date: '2026-10-08'
-  },
-  {
-    id: 'REG-103',
-    name: 'Abdoulaye Diallo',
-    phone: '+221 76 543 21 09',
-    email: 'a.diallo.ong@ong-espoir.org',
-    courseTitle: 'Management des ONG',
-    amountFcfa: 50000,
-    paymentMethod: 'Wave',
-    status: 'Confirmé',
-    date: '2026-10-08'
-  },
-  {
-    id: 'REG-104',
-    name: 'Mariama Diop',
-    phone: '+221 70 889 12 34',
-    email: 'mariama.diop@yahoo.fr',
-    courseTitle: 'Pack Éducation Financière & Investissement',
-    amountFcfa: 30000,
-    paymentMethod: 'Wave',
-    status: 'Validé',
-    date: '2026-10-07'
-  },
-  {
-    id: 'REG-105',
-    name: 'Jean-Baptiste Faye',
-    phone: '+33 6 12 34 56 78',
-    email: 'jb.faye@diaspora-paris.fr',
-    courseTitle: 'Cours de Langue Sérère (100 expressions)',
-    amountFcfa: 30000,
-    paymentMethod: 'Western Union',
-    status: 'En attente',
-    date: '2026-10-07'
-  }
-];
+// Clean default for publication: empty list of registrations
+const INITIAL_REGISTRATIONS: RegistrationRecord[] = [];
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -97,16 +46,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   isOpen, 
   onClose
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Pre-authenticated for easy access
-  const [passcode, setPasscode] = useState('');
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>(() => {
     const saved = localStorage.getItem('ephata_admin_registrations');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try { 
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) { /* ignore */ }
     }
     return INITIAL_REGISTRATIONS;
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [resetFeedback, setResetFeedback] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -158,6 +109,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     document.body.removeChild(link);
   };
 
+  // Reset Countdown Handler (7 days)
+  const handleResetCountdown = (days: number = 7) => {
+    const newTarget = resetCountdownTargetDate(days);
+    const formatted = newTarget.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    setResetFeedback(`Compte à rebours réinitialisé : Clôture fixée au ${formatted} (+${days} jours)`);
+    setTimeout(() => setResetFeedback(null), 4000);
+  };
+
+  // Full reset for publication
+  const handleFullResetForPublication = () => {
+    // 1. Clear registrations
+    setRegistrations([]);
+    localStorage.removeItem('ephata_admin_registrations');
+
+    // 2. Clear student state & progress
+    localStorage.removeItem('ephata_student_name');
+    localStorage.removeItem('ephata_enrolled_courses');
+    localStorage.removeItem('ephata_progress_map');
+    localStorage.removeItem('ephata_user_has_enrolled');
+
+    // 3. Reset countdown to fresh 7 days
+    const freshTarget = resetCountdownTargetDate(7);
+
+    // 4. Dispatch global event to sync App.tsx
+    window.dispatchEvent(new CustomEvent('ephata-reset-publication'));
+
+    const formatted = freshTarget.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    setResetFeedback(`Plateforme réinitialisée avec succès ! Cours et inscriptions remis à zéro. Compte à rebours relancé au ${formatted}. Prêt pour la publication.`);
+    setTimeout(() => setResetFeedback(null), 5000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
@@ -183,12 +173,67 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold font-display">
-                Tableau de Bord Direction & Inscriptions
+                Tableau de Bord Direction & Publication
               </h2>
               <p className="text-xs text-slate-300 mt-0.5">
-                Suivi des inscriptions apprenants, validation des paiements (Wave, Orange Money) et export.
+                Gestion des inscriptions, remise à zéro des cours et contrôle du compte à rebours de rentrée.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Feedback Alert if action occurred */}
+        {resetFeedback && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 flex items-center gap-2 text-xs text-emerald-800 font-semibold">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{resetFeedback}</span>
+          </div>
+        )}
+
+        {/* Publication & Countdown Controls Bar */}
+        <div className="bg-amber-50 border-b border-amber-200 p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>Contrôle Publication & Rentrée des Formations</span>
+            </div>
+            <p className="text-xs text-slate-600 max-w-xl">
+              Prêt pour le lancement officiel ? Réinitialisez les données de tests pour démarrer avec un compteur et des cours 100% neufs.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 text-xs shadow-xs">
+              <button
+                onClick={() => handleResetCountdown(7)}
+                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
+                title="Relancer le compte à rebours pour 7 jours"
+              >
+                Chrono +7j
+              </button>
+              <button
+                onClick={() => handleResetCountdown(14)}
+                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
+                title="Relancer le compte à rebours pour 14 jours"
+              >
+                Chrono +14j
+              </button>
+              <button
+                onClick={() => handleResetCountdown(30)}
+                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
+                title="Relancer le compte à rebours pour 30 jours"
+              >
+                Chrono +30j
+              </button>
+            </div>
+
+            <button
+              onClick={handleFullResetForPublication}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-sm transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Remise à Zéro (Publication)</span>
+            </button>
           </div>
         </div>
 
@@ -196,16 +241,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         <div className="bg-slate-50 border-b border-slate-200 p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Total Inscrits</span>
+              <span>Total Inscrits Réels</span>
               <Users className="w-4 h-4 text-blue-600" />
             </div>
             <p className="text-2xl font-bold text-slate-900">{registrations.length}</p>
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">Apprenants enregistrés</p>
+            <p className="text-[11px] text-emerald-600 font-medium mt-1">Apprenants récents</p>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Recettes encaissées</span>
+              <span>Recettes Réelles</span>
               <DollarSign className="w-4 h-4 text-amber-600" />
             </div>
             <p className="text-xl font-bold text-slate-900 font-display">
@@ -218,11 +263,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Formations actives</span>
+              <span>Offres au Catalogue</span>
               <BookOpen className="w-4 h-4 text-emerald-600" />
             </div>
             <p className="text-2xl font-bold text-slate-900">{COURSES.length}</p>
-            <p className="text-[11px] text-blue-600 font-medium mt-1">Programmes certifiants</p>
+            <p className="text-[11px] text-blue-600 font-medium mt-1">4 Formations + 3 Packs</p>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -232,7 +277,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-sm font-bold text-slate-800">Opérationnelle</span>
+              <span className="text-sm font-bold text-slate-800">Prêt pour Publication</span>
             </div>
             <p className="text-[10px] text-emerald-600 font-medium mt-1">100% autonome</p>
           </div>
@@ -255,7 +300,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
             <button
               onClick={handleExportCsv}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded-xl transition border border-slate-200"
+              disabled={registrations.length === 0}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl transition border ${
+                registrations.length === 0 
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 cursor-pointer'
+              }`}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exporter vers Excel (CSV)</span>
@@ -277,73 +327,85 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {filteredRegistrations.map((reg) => (
-                    <tr key={reg.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3">
-                        <div className="font-bold text-slate-900">{reg.name}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">{reg.phone}</div>
-                        <div className="text-[10px] text-slate-400">{reg.email}</div>
-                      </td>
-                      <td className="p-3 font-medium text-slate-800 max-w-xs">
-                        {reg.courseTitle}
-                      </td>
-                      <td className="p-3">
-                        <div className="font-bold text-slate-900">
-                          {reg.amountFcfa.toLocaleString('fr-FR')} FCFA
-                        </div>
-                        <span className="inline-block mt-0.5 text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-                          {reg.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => handleToggleStatus(reg.id)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
-                            reg.status === 'Validé'
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  {filteredRegistrations.length > 0 ? (
+                    filteredRegistrations.map((reg) => (
+                      <tr key={reg.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3">
+                          <p className="font-bold text-slate-900">{reg.name}</p>
+                          <p className="text-[11px] text-slate-500">{reg.phone}</p>
+                          <p className="text-[10px] text-slate-400">{reg.email}</p>
+                        </td>
+                        <td className="p-3">
+                          <p className="font-medium text-slate-800">{reg.courseTitle}</p>
+                          <span className="text-[10px] text-slate-400">Réf : {reg.id}</span>
+                        </td>
+                        <td className="p-3">
+                          <p className="font-bold text-slate-900">{reg.amountFcfa.toLocaleString('fr-FR')} FCFA</p>
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {reg.paymentMethod}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            reg.status === 'Validé' 
+                              ? 'bg-emerald-100 text-emerald-800' 
                               : reg.status === 'Confirmé'
-                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            reg.status === 'Validé' ? 'bg-emerald-600' : reg.status === 'Confirmé' ? 'bg-blue-600' : 'bg-amber-600'
-                          }`}></span>
-                          <span>{reg.status}</span>
-                        </button>
-                      </td>
-                      <td className="p-3 text-slate-500 font-mono text-[11px]">
-                        {reg.date}
-                      </td>
-                      <td className="p-3 text-right space-x-1">
-                        <button
-                          onClick={() => handleSendWhatsAppNotification(reg)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition inline-flex items-center gap-1 border border-emerald-200 text-[11px]"
-                          title="Envoyer confirmation WhatsApp à l'apprenant"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                        </button>
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              reg.status === 'Validé' ? 'bg-emerald-500' : reg.status === 'Confirmé' ? 'bg-blue-500' : 'bg-amber-500'
+                            }`} />
+                            {reg.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-500 text-[11px]">
+                          {reg.date}
+                        </td>
+                        <td className="p-3 text-right space-x-1.5">
+                          <button
+                            onClick={() => handleToggleStatus(reg.id)}
+                            className="px-2.5 py-1 rounded text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                          >
+                            Changer statut
+                          </button>
+                          <button
+                            onClick={() => handleSendWhatsAppNotification(reg)}
+                            title="Envoyer confirmation sur WhatsApp"
+                            className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 border border-emerald-200 inline-block align-middle"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-10 text-center text-slate-400">
+                        <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="font-medium text-slate-600 text-sm">Aucune inscription enregistrée</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                          La base de données est remise à neuf pour la publication. Les nouvelles inscriptions via Wave, Orange Money et WhatsApp apparaîtront ici automatiquement.
+                        </p>
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 border-t border-slate-200 p-4 px-6 flex items-center justify-between text-xs text-slate-500">
-          <div>
-            Siège : <strong>Sicap liberté 5A, Dakar Sénégal</strong> · Contact : <strong>+221 77 507 91 84</strong> · <span className="font-mono">adonaywaly5@gmail.com</span>
-          </div>
+        <div className="bg-slate-100 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <p>
+            Ephata Consulting Group · Contact Direction : <strong>+221 77 507 91 84</strong>
+          </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-medium transition"
+            className="px-5 py-2 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition"
           >
-            Fermer
+            Fermer le panneau
           </button>
         </div>
 

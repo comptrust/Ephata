@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { directorAvatar } from '../assets/images';
 import { handleImgError } from '../utils/imageFallback';
+import { LaunchCountdown } from './LaunchCountdown';
 
 interface HeroProps {
   onExploreCourses: () => void;
@@ -57,7 +58,7 @@ export const Hero: React.FC<HeroProps> = ({
                 onClick={onExploreCourses}
                 className="w-full sm:w-auto px-6 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm sm:text-base rounded-xl shadow-lg hover:shadow-amber-500/25 transition-all flex items-center justify-center gap-2 group cursor-pointer"
               >
-                <span>Découvrir les 5 Formations</span>
+                <span>Découvrir les Formations & Packs</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
 
@@ -172,6 +173,11 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Official Cohort Launch Countdown Banner */}
+        <div className="mt-10 sm:mt-12">
+          <LaunchCountdown variant="hero" />
         </div>
       </div>
     </section>
