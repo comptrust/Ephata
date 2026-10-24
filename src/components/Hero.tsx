@@ -104,7 +104,7 @@ export const Hero: React.FC<HeroProps> = ({
                     alt="Direction Ephata Consulting Group - Alouise Emmanuel Diouf"
                     referrerPolicy="no-referrer"
                     onError={(e) => handleImgError(e, 'avatar')}
-                    className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 shadow-md shrink-0"
+                    className="w-14 h-14 rounded-full object-cover object-[center_20%] border-2 border-amber-400 shadow-md shrink-0"
                   />
                   <div>
                     <h3 className="font-bold text-white text-base sm:text-lg">Cabinet Ephata Consulting</h3>
@@ -113,48 +113,48 @@ export const Hero: React.FC<HeroProps> = ({
                   </div>
                 </div>
 
-                <div className="divide-y divide-slate-800 text-xs">
-                  <div className="py-2.5 flex items-center justify-between">
+                <div className="divide-y divide-slate-800 text-xs max-h-[340px] overflow-y-auto pr-1">
+                  <div className="py-2 flex items-center justify-between">
                     <div>
-                      <span className="text-white font-bold block">1. Gestion Financière & Comptabilité des ONGs</span>
-                      <span className="text-[10px] text-amber-300 font-medium">Formation en Ligne Certifiante</span>
+                      <span className="text-white font-bold block">1. Compétences de Vie (20H)</span>
+                      <span className="text-[10px] text-amber-300 font-medium">9 Modules · En ligne ou Présentiel</span>
+                    </div>
+                    <span className="font-bold text-amber-400 text-right">150 000 FCFA <span className="text-[10px] text-slate-400 block font-normal">(230 €)</span></span>
+                  </div>
+                  <div className="py-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-white font-bold block">2. Formation OCBs et ONGs Locales</span>
+                      <span className="text-[10px] text-amber-300 font-medium">7 Modules · Procédures & Manuel</span>
+                    </div>
+                    <span className="font-bold text-amber-400 text-right">500 000 FCFA <span className="text-[10px] text-slate-400 block font-normal">(763 €)</span></span>
+                  </div>
+                  <div className="py-2 flex items-center justify-between bg-blue-900/30 px-2 rounded-lg my-1">
+                    <div>
+                      <span className="text-blue-300 font-bold block">3. Externaliser vos Rapprochements Bancaires</span>
+                      <span className="text-[10px] text-slate-300">Prestation technique express sous 48H</span>
+                    </div>
+                    <span className="font-bold text-amber-400 text-right">25 000 FCFA <span className="text-[10px] text-blue-300 block font-normal">(38 €)</span></span>
+                  </div>
+                  <div className="py-2 flex items-center justify-between bg-emerald-900/30 px-2 rounded-lg my-1">
+                    <div>
+                      <span className="text-emerald-300 font-bold block">4. Apprendre et Parler le Wolof en 90 Jours</span>
+                      <span className="text-[10px] text-slate-300">500 expressions + 10 indispensables</span>
+                    </div>
+                    <span className="font-bold text-amber-400 text-right">3 500 FCFA</span>
+                  </div>
+                  <div className="py-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-white font-bold block">5. Gestion Financière & Comptabilité des ONGs</span>
+                      <span className="text-[10px] text-amber-300 font-medium">Formation Certifiante 35H</span>
                     </div>
                     <span className="font-bold text-amber-400 text-right">100 000 FCFA</span>
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div className="py-2 flex items-center justify-between">
                     <div>
-                      <span className="text-white font-bold block">2. Management des ONGs</span>
-                      <span className="text-[10px] text-amber-300 font-medium">Formation en Ligne Certifiante</span>
+                      <span className="text-slate-300 font-medium block">Packs Entrepreneuriat, Finance & Sérère</span>
+                      <span className="text-[10px] text-slate-400">PDFs + 30 Business Plans + Audios</span>
                     </div>
-                    <span className="font-bold text-amber-400 text-right">50 000 FCFA</span>
-                  </div>
-                  <div className="py-2.5 flex items-center justify-between">
-                    <div>
-                      <span className="text-white font-bold block">3. Management Relationnel et Professionnel</span>
-                      <span className="text-[10px] text-amber-300 font-medium">Formation en Ligne Certifiante</span>
-                    </div>
-                    <span className="font-bold text-amber-400 text-right">50 000 FCFA</span>
-                  </div>
-                  <div className="py-2.5 flex items-center justify-between">
-                    <div>
-                      <span className="text-white font-bold block">4. Comment Réussir en Entrepreneuriat en Afrique</span>
-                      <span className="text-[10px] text-amber-300 font-medium">Formation en Ligne Certifiante</span>
-                    </div>
-                    <span className="font-bold text-amber-400 text-right">50 000 FCFA</span>
-                  </div>
-                  <div className="py-2.5 flex items-center justify-between bg-amber-400/10 px-2 rounded-lg my-1">
-                    <div>
-                      <span className="text-amber-300 font-bold block">Packs Numériques PDF (10 000 FCFA chacun)</span>
-                      <span className="text-[10px] text-slate-300">Pack Entrepreneuriat & Pack sur l'Éducation Financière (Vendus en PDF)</span>
-                    </div>
-                    <span className="font-bold text-amber-400 text-right">10 000 FCFA <span className="text-[10px] text-amber-300/80 block">chacun</span></span>
-                  </div>
-                  <div className="py-2.5 flex items-center justify-between">
-                    <div>
-                      <span className="text-slate-300 font-medium block">Pack Apprendre le Sérère Sine-Saloum en 30 jours</span>
-                      <span className="text-[10px] text-slate-400">Guide PDF complet + Audios studio</span>
-                    </div>
-                    <span className="font-bold text-amber-400 text-right">5 000 FCFA</span>
+                    <span className="font-bold text-amber-400 text-right">dès 5 000 F</span>
                   </div>
                 </div>
 

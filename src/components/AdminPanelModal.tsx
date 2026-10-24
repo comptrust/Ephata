@@ -59,6 +59,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [resetFeedback, setResetFeedback] = useState<string | null>(null);
 
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const totalRevenue = registrations
@@ -149,38 +164,57 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white p-6 relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition"
-          >
-            <X className="w-6 h-6" />
-          </button>
+    <>
+      {/* Floating high-priority Close Button at top-right of screen */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="fixed top-3 right-3 sm:top-5 sm:right-6 z-[70] px-3.5 py-2 bg-slate-900/90 hover:bg-red-600 text-white rounded-full shadow-2xl border border-white/30 backdrop-blur-md transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer group"
+        title="Fermer la fenêtre (ou touche Échap)"
+        aria-label="Fermer la fenêtre"
+      >
+        <X className="w-4 h-4 text-white group-hover:rotate-90 transition-transform" />
+        <span>Fermer (✕)</span>
+      </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <span className="p-1.5 bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30">
-              <ShieldCheck className="w-4 h-4" />
-            </span>
-            <span className="text-xs uppercase tracking-widest font-semibold text-amber-400">
-              Direction · Ephata Consulting Group
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div 
+        className="fixed inset-0 z-50 overflow-hidden bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4"
+        onClick={onClose}
+      >
+        <div 
+          className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-slate-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="shrink-0 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white p-4 sm:p-5 px-5 sm:px-6 relative flex items-center justify-between border-b border-slate-800 z-20">
             <div>
-              <h2 className="text-2xl font-bold font-display">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="p-1 bg-amber-500/20 text-amber-400 rounded border border-amber-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-[11px] uppercase tracking-widest font-semibold text-amber-400">
+                  Direction · Ephata Consulting Group
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold font-display">
                 Tableau de Bord Direction & Publication
               </h2>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Gestion des inscriptions, remise à zéro des cours et contrôle du compte à rebours de rentrée.
-              </p>
             </div>
+
+            <button 
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 bg-white/10 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1 text-xs font-bold shrink-0 cursor-pointer border border-white/20"
+              aria-label="Fermer"
+              title="Fermer"
+            >
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Fermer</span>
+            </button>
           </div>
-        </div>
+
+          {/* Scrollable Modal Body */}
+          <div className="flex-1 overflow-y-auto">
 
         {/* Feedback Alert if action occurred */}
         {resetFeedback && (
@@ -395,8 +429,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
+      {/* Footer */}
         <div className="bg-slate-100 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>
             Ephata Consulting Group · Contact Direction : <strong>+221 77 507 91 84</strong>
@@ -411,5 +446,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
       </div>
     </div>
+  </>
   );
 };

@@ -48,7 +48,7 @@ export interface Course {
   title: string;
   subtitle: string;
   badge?: string;
-  category: 'management' | 'leadership' | 'entrepreneurship' | 'finance' | 'langue' | 'personnel';
+  category: 'management' | 'leadership' | 'entrepreneurship' | 'finance' | 'langue' | 'personnel' | 'service';
   categoryLabel: string;
   price: number; // in FCFA
   priceEur?: number; // e.g. 155 or 230
@@ -60,6 +60,10 @@ export interface Course {
   bonusTitle?: string;
   bonuses: string[];
   imageUrl?: string;
+  posterUrl?: string; // Official flyer/affiche image
+  isService?: boolean; // True for externalisation/services
+  executionTime?: string; // e.g. '48H'
+  paymentMethods?: string[]; // e.g. ['Wave', 'Orange Money', 'Ria', 'Western Union']
   keyFeatures: string[];
   description: string;
   targetAudience: string[];

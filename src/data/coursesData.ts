@@ -1,4 +1,5 @@
 import { Course } from '../types';
+import { OFFICIAL_FLYER_COURSES } from './officialFlyerCourses';
 import { NEW_COURSES } from './newCurriculaData';
 import {
   courseOngManagement,
@@ -10,6 +11,7 @@ import {
 } from '../assets/images';
 
 export const COURSES: Course[] = [
+  ...OFFICIAL_FLYER_COURSES,
   ...NEW_COURSES,
   {
     id: 'management-ong',

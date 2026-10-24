@@ -53,12 +53,20 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent opacity-80" />
+            
+            {course.posterUrl && (
+              <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 font-bold text-[10px] shadow-sm flex items-center gap-1 z-10">
+                <Sparkles className="w-3 h-3" />
+                <span>Affiche Officielle</span>
+              </div>
+            )}
+
             <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white">
               <span className="px-2 py-0.5 rounded bg-black/60 backdrop-blur-xs font-bold text-amber-400">
                 {course.categoryLabel}
               </span>
               <span className="font-semibold text-slate-200 drop-shadow">
-                {course.totalHours}
+                {course.executionTime || course.totalHours}
               </span>
             </div>
           </div>
@@ -155,11 +163,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               )}
             </div>
             <span className="text-[11px] text-emerald-700 font-medium block mt-0.5">
-              {course.isPdfOnly 
-                ? '📄 Vente en PDF · Réception immédiate par WhatsApp ou e-mail' 
-                : course.modalities 
-                  ? 'En ligne ou en présentiel (Sicap liberté 5A)' 
-                  : 'Formation certifiante en ligne · Accès 24h/24'}
+              {course.isService
+                ? '⚡ Prestation comptable express en 48H · Contrôle interne'
+                : course.isPdfOnly 
+                  ? '📄 Vente en PDF · Réception immédiate par WhatsApp ou e-mail' 
+                  : course.modalities 
+                    ? 'En ligne ou en présentiel (Sicap liberté 5A)' 
+                    : 'Formation certifiante en ligne · Accès 24h/24'}
             </span>
           </div>
 
@@ -167,7 +177,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             onClick={() => onOpenDetails(course)}
             className="text-xs font-semibold text-slate-600 hover:text-amber-600 underline underline-offset-2 shrink-0 ml-2"
           >
-            {course.isPdfOnly ? 'Sommaire PDF' : 'Programme'}
+            {course.isService ? 'Processus 48H' : course.isPdfOnly ? 'Sommaire PDF' : 'Programme'}
           </button>
         </div>
 
@@ -177,7 +187,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             onClick={() => onOpenDetails(course)}
             className="w-full py-2.5 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors text-center"
           >
-            {course.isPdfOnly ? 'Détails de l\'ouvrage' : 'Détails des cours'}
+            {course.posterUrl ? 'Détails & Affiche' : course.isPdfOnly ? 'Détails de l\'ouvrage' : 'Détails des cours'}
           </button>
 
           {isEnrolled ? (
@@ -202,10 +212,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               onClick={() => onEnroll(course)}
               className="w-full py-2.5 px-3 text-xs font-bold text-white bg-[#0A2540] hover:bg-amber-600 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
             >
-              {course.isPdfOnly ? (
+              {course.isService ? (
+                <span>Commander ({formattedPrice})</span>
+              ) : course.isPdfOnly ? (
                 <>
                   <Download className="w-3 h-3 text-amber-400" />
-                  <span>Acheter le PDF (10 000 F)</span>
+                  <span>Acheter ({formattedPrice})</span>
                 </>
               ) : (
                 <span>S'inscrire ({formattedPrice})</span>

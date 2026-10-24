@@ -20,7 +20,9 @@ import {
   Check, 
   Clock, 
   FileCheck,
-  Maximize2
+  Maximize2,
+  X,
+  Eye
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { handleImgError } from '../utils/imageFallback';
@@ -49,9 +51,10 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Navigation inside classroom
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'video' | 'text' | 'quiz' | 'resources' | 'notes'>(() => {
+  const [activeTab, setActiveTab] = useState<'video' | 'text' | 'quiz' | 'resources' | 'notes' | 'poster'>(() => {
     return course.isPdfOnly ? 'text' : 'video';
   });
+  const [showPosterLightbox, setShowPosterLightbox] = useState<boolean>(false);
 
   // Video player simulation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -213,6 +216,20 @@ export const Classroom: React.FC<ClassroomProps> = ({
             <span className="font-bold text-amber-400">{progressPercent}%</span>
           </div>
 
+          {course.posterUrl && (
+            <button
+              onClick={() => setActiveTab('poster')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'poster'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-400/40 hover:bg-amber-500 hover:text-slate-950'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Affiche Officielle</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenCertificate}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -342,6 +359,40 @@ export const Classroom: React.FC<ClassroomProps> = ({
             })}
           </div>
 
+          {/* Official Course Poster / Flyer Preview in Sidebar */}
+          {course.posterUrl && (
+            <div className="p-3 border-t border-slate-200 bg-amber-50/50">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-amber-600" />
+                  Affiche Officielle
+                </span>
+                <button
+                  onClick={() => setShowPosterLightbox(true)}
+                  className="text-[10px] text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer"
+                >
+                  Agrandir
+                </button>
+              </div>
+              <div
+                onClick={() => setShowPosterLightbox(true)}
+                className="relative rounded-lg overflow-hidden border border-amber-200 cursor-pointer group shadow-2xs aspect-[3/4] max-h-48 bg-slate-100"
+              >
+                <img
+                  src={course.posterUrl}
+                  alt={`Affiche officielle - ${course.title}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => handleImgError(e, 'course')}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-2">
+                  <span className="text-white text-[11px] font-bold flex items-center gap-1">
+                    <Maximize2 className="w-3 h-3" /> Agrandir l'affiche
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick Bonus Tools triggers inside sidebar */}
           <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-1.5 text-xs">
             {course.hasBusinessPlans && (
@@ -442,6 +493,20 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
               <span>Mes Notes</span>
             </button>
+
+            {course.posterUrl && (
+              <button
+                onClick={() => setActiveTab('poster')}
+                className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'poster'
+                    ? 'border-amber-500 text-[#0A2540] bg-white rounded-t-lg shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5 text-amber-600" />
+                <span>Affiche & Programme Officiel</span>
+              </button>
+            )}
           </div>
 
           {/* Tab Content Display */}
@@ -886,6 +951,60 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 </div>
               </div>
             )}
+
+            {/* TAB 6: OFFICIAL POSTER SCREENSHOT & PROGRAM */}
+            {activeTab === 'poster' && course.posterUrl && (
+              <div className="space-y-6 max-w-4xl mx-auto">
+                <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent p-5 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 bg-amber-200/70 px-2.5 py-1 rounded-md">
+                      Affiche Officielle & Programme
+                    </span>
+                    <h3 className="font-black text-slate-900 text-lg mt-1.5">{course.title}</h3>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Support officiel de promotion et descriptif complet validé par Ephata Consulting & Services.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setShowPosterLightbox(true)}
+                      className="px-4 py-2 bg-[#0A2540] hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Plein écran HD</span>
+                    </button>
+                    <a
+                      href={course.posterUrl}
+                      download={`Affiche-Ephata-${course.id}.png`}
+                      className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Télécharger</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex justify-center bg-slate-950 p-4 sm:p-8 rounded-2xl shadow-xl border border-slate-800">
+                  <div
+                    onClick={() => setShowPosterLightbox(true)}
+                    className="relative max-w-2xl cursor-pointer group rounded-xl overflow-hidden shadow-2xl"
+                  >
+                    <img
+                      src={course.posterUrl}
+                      alt={`Affiche officielle de la formation ${course.title}`}
+                      className="w-full h-auto object-contain rounded-xl group-hover:scale-[1.01] transition-transform duration-300"
+                      onError={(e) => handleImgError(e, 'course')}
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="bg-white/95 text-slate-900 px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2">
+                        <Maximize2 className="w-4 h-4 text-amber-600" />
+                        Cliquer pour zoomer en très haute résolution
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom Next/Previous Lesson Navigation Bar */}
@@ -932,6 +1051,52 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </main>
       </div>
+
+      {/* Lightbox Modal for Full Official Poster Screenshot */}
+      {showPosterLightbox && course.posterUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
+          onClick={() => setShowPosterLightbox(false)}
+        >
+          {/* Floating High-Contrast Close Button */}
+          <button
+            onClick={() => setShowPosterLightbox(false)}
+            aria-label="Fermer la vue plein écran"
+            className="fixed top-4 right-4 z-60 bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-1.5 cursor-pointer border-2 border-white/30"
+          >
+            <X className="w-4 h-4" />
+            <span>Fermer</span>
+          </button>
+
+          <div
+            className="relative max-w-4xl max-h-[92vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={course.posterUrl}
+              alt={`Affiche - ${course.title}`}
+              className="max-h-[84vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-white/10"
+              onError={(e) => handleImgError(e, 'course')}
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <a
+                href={course.posterUrl}
+                download={`Affiche-Ephata-${course.id}.png`}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Télécharger le flyer officiel</span>
+              </a>
+              <button
+                onClick={() => setShowPosterLightbox(false)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl border border-white/20 transition-colors cursor-pointer"
+              >
+                ✕ Fermer la vue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

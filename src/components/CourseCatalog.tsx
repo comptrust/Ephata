@@ -17,7 +17,8 @@ import {
   MapPin,
   Laptop,
   BookOpen,
-  Award
+  Award,
+  Clock
 } from 'lucide-react';
 import { directorAvatar } from '../assets/images';
 import { handleImgError } from '../utils/imageFallback';
@@ -40,42 +41,43 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   onOpenBusinessPlans
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTarget, setSelectedTarget] = useState<'all' | 'formations-certifiantes' | 'pdf-packs' | 'entreprises'>('all');
+  const [selectedTarget, setSelectedTarget] = useState<'all' | 'formations-certifiantes' | 'pdf-packs' | 'services' | 'entreprises'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [modalityFilter, setModalityFilter] = useState<'all' | 'online' | 'presentiel'>('all');
 
   const targetTabs = [
     { id: 'all', label: 'Toutes nos Offres', icon: Layers },
-    { id: 'formations-certifiantes', label: '🎓 Formations en Ligne Certifiantes', icon: Award },
-    { id: 'pdf-packs', label: '📄 Packs & Guides Numériques (PDF / Audio)', icon: BookOpen },
-    { id: 'entreprises', label: 'Entreprises & ONGs', icon: Building2 },
+    { id: 'formations-certifiantes', label: '🎓 Formations Certifiantes', icon: Award },
+    { id: 'services', label: '⚡ Prestation Express 48H', icon: Clock },
+    { id: 'pdf-packs', label: '📄 Packs & Langues (PDF / Wolof / Sérère)', icon: BookOpen },
+    { id: 'entreprises', label: 'Entreprises & OCB / ONGs', icon: Building2 },
   ];
 
   const categories = [
     { id: 'all', label: 'Tous les thèmes' },
-    { id: 'formations-certifiantes', label: '🎓 Formations Certifiantes (4)' },
-    { id: 'pdf-packs', label: '📄 Packs PDF & Audio (3)' },
-    { id: 'ong', label: 'Gestion & Management des ONGs' },
-    { id: 'leadership', label: 'Management Relationnel' },
-    { id: 'entrepreneurship', label: 'Entrepreneuriat' },
+    { id: 'personnel', label: 'Compétences de Vie (150 000 F)' },
+    { id: 'ong', label: 'OCB & Management des ONGs' },
+    { id: 'service', label: 'Rapprochements Bancaires 48H' },
+    { id: 'langue', label: 'Langues Wolof & Sérère' },
     { id: 'finance', label: 'Finances & Comptabilité' },
-    { id: 'langue', label: 'Langue Sérère' },
+    { id: 'entrepreneurship', label: 'Entrepreneuriat' },
+    { id: 'leadership', label: 'Management Relationnel' },
   ];
 
   const filteredCourses = courses.filter((course) => {
     const isPack = course.isPdfOnly === true || course.category === 'langue';
+    const isService = course.isService === true;
 
     const matchesTarget = 
       selectedTarget === 'all' || 
-      (selectedTarget === 'formations-certifiantes' && !isPack) ||
+      (selectedTarget === 'formations-certifiantes' && !isPack && !isService) ||
+      (selectedTarget === 'services' && isService) ||
       (selectedTarget === 'pdf-packs' && isPack) ||
-      (selectedTarget === 'entreprises' && (course.category === 'management' || course.category === 'leadership' || course.category === 'entrepreneurship' || course.id.includes('ong')));
+      (selectedTarget === 'entreprises' && (course.category === 'management' || course.category === 'leadership' || course.category === 'entrepreneurship' || course.category === 'service' || course.id.includes('ong') || course.id.includes('ocb')));
 
     const matchesCategory = 
       selectedCategory === 'all' || 
-      (selectedCategory === 'formations-certifiantes' && !isPack) ||
-      (selectedCategory === 'pdf-packs' && isPack) ||
-      (selectedCategory === 'ong' && (course.category === 'management' || course.id.includes('ong'))) ||
+      (selectedCategory === 'ong' && (course.category === 'management' || course.id.includes('ong') || course.id.includes('ocb'))) ||
       (course.category === selectedCategory);
 
     const matchesModality = 
@@ -276,7 +278,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
                 alt="Alouise Emmanuel Diouf - Directeur de la formation Ephata Consulting"
                 referrerPolicy="no-referrer"
                 onError={(e) => handleImgError(e, 'avatar')}
-                className="w-20 h-20 rounded-full object-cover border-3 border-amber-400 shadow-lg shrink-0"
+                className="w-20 h-20 rounded-full object-cover object-[center_20%] border-3 border-amber-400 shadow-lg shrink-0"
               />
               <div className="space-y-1">
                 <span className="text-xs uppercase tracking-widest text-amber-400 font-bold">
