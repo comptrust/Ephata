@@ -1,26 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   ShieldCheck, 
   Users, 
-  TrendingUp, 
   DollarSign, 
-  Phone, 
-  MessageCircle, 
   CheckCircle, 
   Clock, 
   Download, 
   Search, 
   Lock,
-  Sparkles,
-  BookOpen,
-  Calendar,
-  RotateCcw,
+  Sparkles, 
+  BookOpen, 
+  RotateCcw, 
+  Plus,
   Trash2,
-  AlertTriangle
+  Edit3,
+  Layers,
+  FileText,
+  Video,
+  HelpCircle,
+  AlertCircle,
+  ExternalLink,
+  MessageCircle,
+  CheckCircle2,
+  LogIn
 } from 'lucide-react';
-import { COURSES } from '../data/coursesData';
-import { resetCountdownTargetDate, getCountdownTargetDate } from './LaunchCountdown';
+import { Course, CourseModule, LessonContent } from '../types';
+import { resetCountdownTargetDate } from './LaunchCountdown';
+import { useAuth } from '../context/AuthContext';
+import { useCourses } from '../utils/courseStore';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { courseOngManagement, directorAvatar } from '../assets/images';
 
 export interface RegistrationRecord {
   id: string;
@@ -34,7 +45,6 @@ export interface RegistrationRecord {
   date: string;
 }
 
-// Clean default for publication: empty list of registrations
 const INITIAL_REGISTRATIONS: RegistrationRecord[] = [];
 
 interface AdminPanelModalProps {
@@ -46,6 +56,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   isOpen, 
   onClose
 }) => {
+  const { currentUser, userProfile, isAdmin, openAuthModal, signInGoogle } = useAuth();
+  const { courses, submitCourse, removeCourse } = useCourses();
+
+  const [activeAdminTab, setActiveAdminTab] = useState<'create-course' | 'courses-list' | 'learners' | 'settings'>('create-course');
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>(() => {
     const saved = localStorage.getItem('ephata_admin_registrations');
     if (saved) {
@@ -59,20 +73,97 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [resetFeedback, setResetFeedback] = useState<string | null>(null);
 
+  // Firestore students list
+  const [firestoreStudents, setFirestoreStudents] = useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Course Creator Form State
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseSubtitle, setCourseSubtitle] = useState('');
+  const [courseCategory, setCourseCategory] = useState('management');
+  const [courseCategoryLabel, setCourseCategoryLabel] = useState('Management des ONGs');
+  const [coursePrice, setCoursePrice] = useState('50000');
+  const [courseOriginalPrice, setCourseOriginalPrice] = useState('75000');
+  const [courseDuration, setCourseDuration] = useState('20 Heures');
+  const [courseDurationWeeks, setCourseDurationWeeks] = useState('4 semaines');
+  const [courseDescription, setCourseDescription] = useState('');
+  const [courseImageUrl, setCourseImageUrl] = useState('');
+  const [coursePosterUrl, setCoursePosterUrl] = useState('');
+  
+  // Modules builder state
+  const [modules, setModules] = useState<Array<{
+    title: string;
+    description: string;
+    duration: string;
+    lessons: Array<{
+      title: string;
+      duration: string;
+      textContent: string;
+      summaryPoints: string;
+    }>;
+    quizQuestion: string;
+    quizOptions: string; // comma separated
+    quizCorrectIndex: number;
+  }>>([
+    {
+      title: 'Module 1 : Fondements & Cadre Stratégique',
+      description: 'Introduction détaillée aux concepts clés et méthodologies.',
+      duration: '4h 30m',
+      lessons: [
+        {
+          title: 'Leçon 1.1 : Cadre juridique et gouvernance',
+          duration: '45 min',
+          textContent: 'Contenu détaillé de la leçon, définitions normatives et cas d\'application pratique au Sénégal et en zone OHADA.',
+          summaryPoints: 'Règles de conformité, gouvernance transparente, responsabilités des dirigeants'
+        },
+        {
+          title: 'Leçon 1.2 : Procédures opérationnelles et contrôle',
+          duration: '50 min',
+          textContent: 'Élaboration du manuel de procédures et mécanismes de vérification interne.',
+          summaryPoints: 'Contrôle interne, validation hiérarchique, traçabilité des opérations'
+        }
+      ],
+      quizQuestion: 'Quel est l\'organe principal de gouvernance statutaire ?',
+      quizOptions: 'L\'Assemblée Générale, Le Trésorier seul, Le prestataire externe, Le comptable',
+      quizCorrectIndex: 0
+    }
+  ]);
+
+  const [courseSubmitting, setCourseSubmitting] = useState(false);
+  const [courseSuccessMsg, setCourseSuccessMsg] = useState<string | null>(null);
+
   // Close on Escape key
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && isOpen) onClose();
     };
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
+      loadFirestoreStudents();
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         document.body.style.overflow = 'unset';
       };
     }
   }, [isOpen, onClose]);
+
+  const loadFirestoreStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const q = collection(db, 'users');
+      const snap = await getDocs(q);
+      const list: any[] = [];
+      snap.forEach(d => {
+        list.push({ id: d.id, ...d.data() });
+      });
+      setFirestoreStudents(list);
+    } catch (e) {
+      console.warn('Error loading students from firestore:', e);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -102,7 +193,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleSendWhatsAppNotification = (reg: RegistrationRecord) => {
     const message = encodeURIComponent(
-      `Bonjour ${reg.name}, Ephata Consulting Group confirme la validation de votre inscription à la formation : "${reg.courseTitle}". Bienvenue sur la plateforme ! Contact formateur : +221 77 507 91 84`
+      `Bonjour ${reg.name}, Ephata Consulting Group confirme la validation de votre inscription à la formation : "${reg.courseTitle}". Bienvenue sur la plateforme ! Direction M. Alouise Emmanuel Diouf : +221 77 507 91 84`
     );
     const cleanPhone = reg.phone.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
@@ -138,29 +229,181 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Full reset for publication
   const handleFullResetForPublication = () => {
-    // 1. Clear registrations
     setRegistrations([]);
     localStorage.removeItem('ephata_admin_registrations');
-
-    // 2. Clear student state & progress
     localStorage.removeItem('ephata_student_name');
     localStorage.removeItem('ephata_enrolled_courses');
     localStorage.removeItem('ephata_progress_map');
     localStorage.removeItem('ephata_user_has_enrolled');
-
-    // 3. Reset countdown to fresh 7 days
-    const freshTarget = resetCountdownTargetDate(7);
-
-    // 4. Dispatch global event to sync App.tsx
     window.dispatchEvent(new CustomEvent('ephata-reset-publication'));
-
-    const formatted = freshTarget.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-    setResetFeedback(`Plateforme réinitialisée avec succès ! Cours et inscriptions remis à zéro. Compte à rebours relancé au ${formatted}. Prêt pour la publication.`);
+    setResetFeedback('Plateforme réinitialisée avec succès ! Prêt pour la publication.');
     setTimeout(() => setResetFeedback(null), 5000);
+  };
+
+  // Add a module in form
+  const handleAddModule = () => {
+    const modNum = modules.length + 1;
+    setModules(prev => [
+      ...prev,
+      {
+        title: `Module ${modNum} : Titre du module`,
+        description: 'Objectifs et thématiques abordées dans ce module.',
+        duration: '3h 00m',
+        lessons: [
+          {
+            title: `Leçon ${modNum}.1 : Introduction et fondamentaux`,
+            duration: '30 min',
+            textContent: 'Contenu pédagogique structuré et fiches pratiques.',
+            summaryPoints: 'Point clé 1, Point clé 2, Point clé 3'
+          }
+        ],
+        quizQuestion: 'Question de synthèse du module ?',
+        quizOptions: 'Réponse correcte, Deuxième option, Troisième option',
+        quizCorrectIndex: 0
+      }
+    ]);
+  };
+
+  // Add a lesson to a module
+  const handleAddLessonToModule = (modIdx: number) => {
+    setModules(prev => prev.map((m, idx) => {
+      if (idx !== modIdx) return m;
+      const lessNum = m.lessons.length + 1;
+      return {
+        ...m,
+        lessons: [
+          ...m.lessons,
+          {
+            title: `Leçon ${idx + 1}.${lessNum} : Nouvelle leçon`,
+            duration: '25 min',
+            textContent: 'Contenu explicatif, cas pratiques et recommandations méthodologiques.',
+            summaryPoints: 'Notions essentielles à retenir'
+          }
+        ]
+      };
+    }));
+  };
+
+  // Submit Course to Firestore
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseTitle.trim()) return;
+
+    setCourseSubmitting(true);
+    setCourseSuccessMsg(null);
+
+    const generatedId = courseTitle
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || `cours-${Date.now()}`;
+
+    // Transform modules into CourseModule shape
+    const formattedModules: CourseModule[] = modules.map((m, mIdx) => {
+      const parsedOptions = m.quizOptions.split(',').map(s => s.trim()).filter(Boolean);
+      return {
+        id: `mod-${generatedId}-${mIdx + 1}`,
+        number: mIdx + 1,
+        title: m.title,
+        description: m.description,
+        duration: m.duration,
+        lessons: m.lessons.map((l, lIdx) => ({
+          id: `les-${generatedId}-${mIdx + 1}-${lIdx + 1}`,
+          title: l.title,
+          duration: l.duration,
+          type: 'video' as const,
+          summary: l.summaryPoints,
+          videoSlides: [
+            {
+              timestamp: 0,
+              title: l.title,
+              bulletPoints: l.summaryPoints.split(',').map(s => s.trim()).filter(Boolean),
+            }
+          ],
+          textContent: [l.textContent],
+          keyTakeaways: l.summaryPoints.split(',').map(s => s.trim()).filter(Boolean),
+          downloadableResource: {
+            name: `Support PDF - ${l.title}`,
+            fileSize: '1.8 MB',
+            fileType: 'PDF',
+            description: 'Support de cours et synthèse officielle Ephata Consulting'
+          }
+        })),
+        quiz: {
+          title: `Évaluation ${m.title}`,
+          questions: [
+            {
+              id: `q-${mIdx + 1}-1`,
+              question: m.quizQuestion,
+              options: parsedOptions.length > 0 ? parsedOptions : ['Option A', 'Option B', 'Option C'],
+              correctAnswer: m.quizCorrectIndex,
+              explanation: 'Explication détaillée basée sur les règles et procédures officielles.'
+            }
+          ]
+        }
+      };
+    });
+
+    const newCourse: Course = {
+      id: generatedId,
+      title: courseTitle.trim(),
+      subtitle: courseSubtitle.trim() || 'Formation certifiante d\'excellence dispensée par Ephata Consulting Group.',
+      badge: 'Nouveau Programme 2026',
+      category: (['management', 'finance', 'leadership', 'entrepreneurship', 'langue', 'personnel', 'service'].includes(courseCategory) ? courseCategory : 'management') as any,
+      categoryLabel: courseCategoryLabel,
+      price: parseInt(coursePrice, 10) || 50000,
+      originalPrice: parseInt(courseOriginalPrice, 10) || 75000,
+      durationWeeks: courseDurationWeeks,
+      totalHours: courseDuration,
+      videoCount: formattedModules.reduce((acc, m) => acc + m.lessons.length, 0),
+      pdfCount: formattedModules.length * 2,
+      bonusTitle: 'Pack Outils Professionnels Inclus',
+      bonuses: [
+        'Accès illimité 24h/24 et 7j/7 aux modules et vidéos',
+        'Fiches de synthèse, modèles opérationnels et exercices pratiques',
+        'Attestation de réussite certifiée par Ephata Consulting Group',
+        'Assistance et coaching personnalisé de 3 mois avec Alouise Emmanuel Diouf'
+      ],
+      keyFeatures: [
+        'Formation 100% en ligne ou présentiel à Dakar (Sicap liberté 5A)',
+        'Accompagnement méthodologique adapté aux réalités professionnelles africaines',
+        'Conforme aux standards de gestion internationaux et OHADA'
+      ],
+      description: courseDescription.trim() || 'Programme d\'excellence conçu pour renforcer les compétences stratégiques et managériales.',
+      targetAudience: [
+        'Professionnels en poste et dirigeants',
+        'Chefs de projets et coordinateurs',
+        'Entrepreneurs et porteurs d\'initiatives'
+      ],
+      prerequisites: 'Aucun prérequis spécifique. Motivation et rigueur professionnelle.',
+      contactPhone: '+221 77 507 91 84',
+      contactEmail: 'adonaywaly5@gmail.com',
+      imageUrl: courseImageUrl.trim() || courseOngManagement,
+      posterUrl: coursePosterUrl.trim() || undefined,
+      instructor: {
+        name: 'Alouise Emmanuel Diouf',
+        title: 'Directeur Général & Formateur Principal · Ephata Consulting',
+        bio: 'Expert consultant international en management des organisations et formation professionnelle.',
+        avatarUrl: directorAvatar,
+        email: 'adonaywaly5@gmail.com'
+      },
+      modules: formattedModules
+    };
+
+    try {
+      await submitCourse(newCourse, currentUser?.uid || 'alouise-admin');
+      setCourseSuccessMsg(`La formation « ${newCourse.title} » a été publiée avec succès dans la base de données Firestore ! Elle est immédiatement disponible pour les apprenants.`);
+      // Reset form
+      setCourseTitle('');
+      setCourseSubtitle('');
+      setCourseDescription('');
+      setCoursePosterUrl('');
+    } catch (err: any) {
+      alert(`Erreur de publication : ${err.message}`);
+    } finally {
+      setCourseSubmitting(false);
+    }
   };
 
   return (
@@ -182,7 +425,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         onClick={onClose}
       >
         <div 
-          className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-slate-200"
+          className="relative bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-slate-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -193,11 +436,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <ShieldCheck className="w-3.5 h-3.5" />
                 </span>
                 <span className="text-[11px] uppercase tracking-widest font-semibold text-amber-400">
-                  Direction · Ephata Consulting Group
+                  Direction Générale · Alouise Emmanuel Diouf
                 </span>
+                {isAdmin ? (
+                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-full border border-emerald-400/30">
+                    Connecté Admin (Firestore)
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded-full border border-amber-400/30">
+                    Mode Direction Locale & Cloud
+                  </span>
+                )}
               </div>
               <h2 className="text-lg sm:text-xl font-bold font-display">
-                Tableau de Bord Direction & Publication
+                Tableau de Bord & Gestion des Formations (E-Learning Backend)
               </h2>
             </div>
 
@@ -213,239 +465,664 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </button>
           </div>
 
+          {/* Admin Navigation Tabs */}
+          <div className="shrink-0 bg-slate-100 border-b border-slate-200 px-6 pt-2 flex items-center gap-2 overflow-x-auto text-xs font-bold">
+            <button
+              onClick={() => setActiveAdminTab('create-course')}
+              className={`px-4 py-2.5 rounded-t-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeAdminTab === 'create-course'
+                  ? 'bg-white text-[#0A2540] border-t-2 border-amber-500 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-600" />
+              <span>Soumettre un Nouveau Cours</span>
+            </button>
+
+            <button
+              onClick={() => setActiveAdminTab('courses-list')}
+              className={`px-4 py-2.5 rounded-t-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeAdminTab === 'courses-list'
+                  ? 'bg-white text-[#0A2540] border-t-2 border-amber-500 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              <span>Formations au Catalogue ({courses.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveAdminTab('learners')}
+              className={`px-4 py-2.5 rounded-t-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeAdminTab === 'learners'
+                  ? 'bg-white text-[#0A2540] border-t-2 border-amber-500 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Apprenants & Suivi ({firestoreStudents.length + registrations.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveAdminTab('settings')}
+              className={`px-4 py-2.5 rounded-t-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeAdminTab === 'settings'
+                  ? 'bg-white text-[#0A2540] border-t-2 border-amber-500 shadow-2xs font-extrabold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Compte à Rebours & Publication</span>
+            </button>
+          </div>
+
           {/* Scrollable Modal Body */}
           <div className="flex-1 overflow-y-auto">
 
-        {/* Feedback Alert if action occurred */}
-        {resetFeedback && (
-          <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 flex items-center gap-2 text-xs text-emerald-800 font-semibold">
-            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{resetFeedback}</span>
-          </div>
-        )}
+            {/* Feedback Alert if action occurred */}
+            {resetFeedback && (
+              <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 flex items-center gap-2 text-xs text-emerald-800 font-semibold">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{resetFeedback}</span>
+              </div>
+            )}
 
-        {/* Publication & Countdown Controls Bar */}
-        <div className="bg-amber-50 border-b border-amber-200 p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Contrôle Publication & Rentrée des Formations</span>
-            </div>
-            <p className="text-xs text-slate-600 max-w-xl">
-              Prêt pour le lancement officiel ? Réinitialisez les données de tests pour démarrer avec un compteur et des cours 100% neufs.
-            </p>
-          </div>
+            {/* TAB 1: SOUSTRACTION / CRÉATION DE COURS PAR ALOUISE */}
+            {activeAdminTab === 'create-course' && (
+              <div className="p-6 space-y-6">
+                <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <p className="font-bold text-amber-950">
+                      Espace Formateur · Soumission de nouveaux cours & contenus
+                    </p>
+                    <p>
+                      M. Alouise Emmanuel Diouf peut renseigner ici de nouveaux cours, organiser les modules, leçons, fiches de révision et quiz d'évaluation. Toute formation enregistrée est sauvegardée dans la base de données Firestore et immédiatement accessible aux apprenants.
+                    </p>
+                  </div>
+                </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 text-xs shadow-xs">
-              <button
-                onClick={() => handleResetCountdown(7)}
-                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
-                title="Relancer le compte à rebours pour 7 jours"
-              >
-                Chrono +7j
-              </button>
-              <button
-                onClick={() => handleResetCountdown(14)}
-                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
-                title="Relancer le compte à rebours pour 14 jours"
-              >
-                Chrono +14j
-              </button>
-              <button
-                onClick={() => handleResetCountdown(30)}
-                className="px-2.5 py-1 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition"
-                title="Relancer le compte à rebours pour 30 jours"
-              >
-                Chrono +30j
-              </button>
-            </div>
+                {courseSuccessMsg && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5 shadow-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <p className="font-bold">Succès de la soumission !</p>
+                      <p className="mt-0.5">{courseSuccessMsg}</p>
+                    </div>
+                  </div>
+                )}
 
-            <button
-              onClick={handleFullResetForPublication}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-sm transition"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Remise à Zéro (Publication)</span>
-            </button>
-          </div>
-        </div>
+                <form onSubmit={handleCreateCourse} className="space-y-6">
+                  {/* Basic Course Info */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-amber-600" />
+                      1. Informations Générales de la Formation
+                    </h3>
 
-        {/* Stats Row */}
-        <div className="bg-slate-50 border-b border-slate-200 p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Total Inscrits Réels</span>
-              <Users className="w-4 h-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900">{registrations.length}</p>
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">Apprenants récents</p>
-          </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Titre officiel de la formation *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={courseTitle}
+                          onChange={(e) => setCourseTitle(e.target.value)}
+                          placeholder="Ex : Gestion Financière & Rapprochements Bancaires des ONG"
+                          className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Recettes Réelles</span>
-              <DollarSign className="w-4 h-4 text-amber-600" />
-            </div>
-            <p className="text-xl font-bold text-slate-900 font-display">
-              {totalRevenue.toLocaleString('fr-FR')} <span className="text-xs text-slate-500">FCFA</span>
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              ≈ {Math.round(totalRevenue / 655.957)} €
-            </p>
-          </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Sous-titre / Accroche promotionnelle
+                        </label>
+                        <input
+                          type="text"
+                          value={courseSubtitle}
+                          onChange={(e) => setCourseSubtitle(e.target.value)}
+                          placeholder="Ex : Maîtrisez le logiciel et les procédures sous 48H"
+                          className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Offres au Catalogue</span>
-              <BookOpen className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-900">{COURSES.length}</p>
-            <p className="text-[11px] text-blue-600 font-medium mt-1">4 Formations + 3 Packs</p>
-          </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Catégorie de formation
+                        </label>
+                        <select
+                          value={courseCategory}
+                          onChange={(e) => {
+                            setCourseCategory(e.target.value);
+                            const map: Record<string, string> = {
+                              management: 'Management des ONGs',
+                              finance: 'Finance & Comptabilité',
+                              dev_perso: 'Développement Personnel & Leadership',
+                              languages: 'Langues Africaines (Wolof / Sérère)',
+                              entrepreneurship: 'Entrepreneuriat & Business Plans'
+                            };
+                            setCourseCategoryLabel(map[e.target.value] || 'Formation Professionnelle');
+                          }}
+                          className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        >
+                          <option value="management">Management des ONGs</option>
+                          <option value="finance">Finance & Comptabilité</option>
+                          <option value="dev_perso">Développement Personnel</option>
+                          <option value="languages">Langues (Wolof / Sérère)</option>
+                          <option value="entrepreneurship">Entrepreneuriat</option>
+                        </select>
+                      </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-              <span>Statut Plateforme</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-sm font-bold text-slate-800">Prêt pour Publication</span>
-            </div>
-            <p className="text-[10px] text-emerald-600 font-medium mt-1">100% autonome</p>
-          </div>
-        </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Prix (FCFA) *
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            value={coursePrice}
+                            onChange={(e) => setCoursePrice(e.target.value)}
+                            className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Prix barré (FCFA)
+                          </label>
+                          <input
+                            type="number"
+                            value={courseOriginalPrice}
+                            onChange={(e) => setCourseOriginalPrice(e.target.value)}
+                            className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
 
-        {/* Content: Learners table */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Rechercher un apprenant..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-900 outline-none"
-              />
-            </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Volume horaire / Durée
+                        </label>
+                        <input
+                          type="text"
+                          value={courseDuration}
+                          onChange={(e) => setCourseDuration(e.target.value)}
+                          placeholder="Ex : 20 Heures d'apprentissage"
+                          className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
 
-            <button
-              onClick={handleExportCsv}
-              disabled={registrations.length === 0}
-              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl transition border ${
-                registrations.length === 0 
-                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 cursor-pointer'
-              }`}
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Exporter vers Excel (CSV)</span>
-            </button>
-          </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Affiche officielle / Flyer (URL de l'image ou capture)
+                        </label>
+                        <input
+                          type="text"
+                          value={coursePosterUrl}
+                          onChange={(e) => setCoursePosterUrl(e.target.value)}
+                          placeholder="Optionnel : Lien vers l'affiche officielle"
+                          className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
 
-          {/* Table */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-100 text-slate-700 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="p-3">Apprenant</th>
-                    <th className="p-3">Formation</th>
-                    <th className="p-3">Montant & Mode</th>
-                    <th className="p-3">Statut</th>
-                    <th className="p-3">Date</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredRegistrations.length > 0 ? (
-                    filteredRegistrations.map((reg) => (
-                      <tr key={reg.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3">
-                          <p className="font-bold text-slate-900">{reg.name}</p>
-                          <p className="text-[11px] text-slate-500">{reg.phone}</p>
-                          <p className="text-[10px] text-slate-400">{reg.email}</p>
-                        </td>
-                        <td className="p-3">
-                          <p className="font-medium text-slate-800">{reg.courseTitle}</p>
-                          <span className="text-[10px] text-slate-400">Réf : {reg.id}</span>
-                        </td>
-                        <td className="p-3">
-                          <p className="font-bold text-slate-900">{reg.amountFcfa.toLocaleString('fr-FR')} FCFA</p>
-                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            {reg.paymentMethod}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Description complète de la formation
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={courseDescription}
+                        onChange={(e) => setCourseDescription(e.target.value)}
+                        placeholder="Présentez les enjeux, les bénéfices concrets et les compétences acquises par les étudiants..."
+                        className="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Modules & Lessons Builder */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        2. Structure Pédagogique : Modules & Leçons ({modules.length})
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleAddModule}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Ajouter un Module</span>
+                      </button>
+                    </div>
+
+                    {modules.map((mod, mIdx) => (
+                      <div key={mIdx} className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                          <span className="text-xs font-black text-[#0A2540]">
+                            Module {mIdx + 1}
                           </span>
-                        </td>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            reg.status === 'Validé' 
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : reg.status === 'Confirmé'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              reg.status === 'Validé' ? 'bg-emerald-500' : reg.status === 'Confirmé' ? 'bg-blue-500' : 'bg-amber-500'
-                            }`} />
-                            {reg.status}
+                          {modules.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setModules(modules.filter((_, idx) => idx !== mIdx))}
+                              className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Supprimer ce module</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Titre du Module</label>
+                            <input
+                              type="text"
+                              value={mod.title}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setModules(prev => prev.map((m, i) => i === mIdx ? { ...m, title: val } : m));
+                              }}
+                              className="w-full p-2 text-xs border border-slate-300 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Durée estimée</label>
+                            <input
+                              type="text"
+                              value={mod.duration}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setModules(prev => prev.map((m, i) => i === mIdx ? { ...m, duration: val } : m));
+                              }}
+                              className="w-full p-2 text-xs border border-slate-300 rounded-lg"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Lessons in this module */}
+                        <div className="pt-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-700">Leçons ({mod.lessons.length})</span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddLessonToModule(mIdx)}
+                              className="text-[11px] text-amber-700 font-bold hover:underline flex items-center gap-0.5"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Ajouter une leçon
+                            </button>
+                          </div>
+
+                          {mod.lessons.map((les, lIdx) => (
+                            <div key={lIdx} className="p-3 bg-slate-50 rounded-lg border border-slate-200/80 space-y-2 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-800">Leçon {mIdx + 1}.{lIdx + 1}</span>
+                                {mod.lessons.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setModules(prev => prev.map((m, i) => i === mIdx ? {
+                                        ...m,
+                                        lessons: m.lessons.filter((_, li) => li !== lIdx)
+                                      } : m));
+                                    }}
+                                    className="text-red-500 hover:text-red-700 text-[10px]"
+                                  >
+                                    Supprimer
+                                  </button>
+                                )}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Titre de la leçon"
+                                value={les.title}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setModules(prev => prev.map((m, i) => i === mIdx ? {
+                                    ...m,
+                                    lessons: m.lessons.map((l, li) => li === lIdx ? { ...l, title: val } : l)
+                                  } : m));
+                                }}
+                                className="w-full p-1.5 text-xs bg-white border border-slate-300 rounded"
+                              />
+                              <textarea
+                                rows={2}
+                                placeholder="Fiche de cours et clés d'apprentissage..."
+                                value={les.textContent}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setModules(prev => prev.map((m, i) => i === mIdx ? {
+                                    ...m,
+                                    lessons: m.lessons.map((l, li) => li === lIdx ? { ...l, textContent: val } : l)
+                                  } : m));
+                                }}
+                                className="w-full p-1.5 text-xs bg-white border border-slate-300 rounded"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Module Quiz */}
+                        <div className="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 space-y-2 text-xs">
+                          <span className="font-bold text-amber-900 block">Quiz de validation du module</span>
+                          <input
+                            type="text"
+                            placeholder="Question du quiz"
+                            value={mod.quizQuestion}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setModules(prev => prev.map((m, i) => i === mIdx ? { ...m, quizQuestion: val } : m));
+                            }}
+                            className="w-full p-1.5 text-xs bg-white border border-amber-300 rounded"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Options de réponse (séparées par des virgules)"
+                            value={mod.quizOptions}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setModules(prev => prev.map((m, i) => i === mIdx ? { ...m, quizOptions: val } : m));
+                            }}
+                            className="w-full p-1.5 text-xs bg-white border border-amber-300 rounded"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Form Submission */}
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={courseSubmitting}
+                      className="px-6 py-3 bg-[#0A2540] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>{courseSubmitting ? 'Publication en cours dans Firestore...' : 'Publier la formation sur la plateforme'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* TAB 2: LISTE DES COURS EN LIGNE */}
+            {activeAdminTab === 'courses-list' && (
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Toutes les Formations Actives ({courses.length})
+                  </h3>
+                  <button
+                    onClick={() => setActiveAdminTab('create-course')}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center gap-1 shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nouveau Cours</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {courses.map((c) => (
+                    <div key={c.id} className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs flex gap-3">
+                      <img
+                        src={c.imageUrl}
+                        alt={c.title}
+                        className="w-24 h-24 object-cover rounded-lg shrink-0 border border-slate-200"
+                      />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                            {c.categoryLabel || c.category}
                           </span>
-                        </td>
-                        <td className="p-3 text-slate-500 text-[11px]">
-                          {reg.date}
-                        </td>
-                        <td className="p-3 text-right space-x-1.5">
-                          <button
-                            onClick={() => handleToggleStatus(reg.id)}
-                            className="px-2.5 py-1 rounded text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-                          >
-                            Changer statut
-                          </button>
-                          <button
-                            onClick={() => handleSendWhatsAppNotification(reg)}
-                            title="Envoyer confirmation sur WhatsApp"
-                            className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 border border-emerald-200 inline-block align-middle"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="p-10 text-center text-slate-400">
-                        <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="font-medium text-slate-600 text-sm">Aucune inscription enregistrée</p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          La base de données est remise à neuf pour la publication. Les nouvelles inscriptions via Wave, Orange Money et WhatsApp apparaîtront ici automatiquement.
+                          <span className="text-xs font-black text-slate-900">
+                            {c.price.toLocaleString('fr-FR')} FCFA
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 truncate">
+                          {c.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2">
+                          {c.subtitle}
                         </p>
-                      </td>
-                    </tr>
+                        <div className="pt-1 flex items-center justify-between text-[11px] text-slate-400">
+                          <span>{c.modules.length} modules · {c.totalHours}</span>
+                          <span className="text-emerald-600 font-bold">Actif</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: APPRENANTS & PROGRESSIONS */}
+            {activeAdminTab === 'learners' && (
+              <div className="p-6 space-y-4">
+                {/* Stats Row */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                      <span>Comptes Étudiants Firestore</span>
+                      <Users className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900">{firestoreStudents.length}</p>
+                    <p className="text-[11px] text-emerald-600 font-medium mt-1">Authentifiés Google & Email</p>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                      <span>Inscriptions Payées</span>
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900">{registrations.length}</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Wave & Orange Money</p>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                      <span>Recettes Totales</span>
+                      <DollarSign className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <p className="text-xl font-bold text-slate-900 font-display">
+                      {totalRevenue.toLocaleString('fr-FR')} <span className="text-xs text-slate-500">FCFA</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">≈ {Math.round(totalRevenue / 655.957)} €</p>
+                  </div>
+                </div>
+
+                {/* Firestore Accounts List */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                  <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      Utilisateurs Authentifiés dans le Cloud ({firestoreStudents.length})
+                    </span>
+                    <button
+                      onClick={loadFirestoreStudents}
+                      className="text-xs text-amber-700 font-bold hover:underline cursor-pointer"
+                    >
+                      Actualiser la liste
+                    </button>
+                  </div>
+
+                  {firestoreStudents.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                      Aucun compte utilisateur enregistré pour le moment. Les étudiants apparaîtront ici dès leur première connexion Google ou inscription par email.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                      {firestoreStudents.map((st) => (
+                        <div key={st.id} className="p-3 flex items-center justify-between text-xs hover:bg-slate-50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs">
+                              {st.displayName?.[0] || st.email?.[0] || 'U'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900">{st.displayName || 'Apprenant'}</p>
+                              <p className="text-[11px] text-slate-500">{st.email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              st.role === 'admin' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {st.role === 'admin' ? 'Direction' : 'Étudiant'}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 mt-0.5">
+                              Inscrit le {new Date(st.createdAt || Date.now()).toLocaleDateString('fr-FR')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+
+                {/* Local / Inscription Records Table */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Commandes & Inscriptions récentes</span>
+                    <button
+                      onClick={handleExportCsv}
+                      className="text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Exporter CSV</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-left text-xs text-slate-600">
+                      <thead className="bg-slate-100 text-[11px] uppercase tracking-wider text-slate-500">
+                        <tr>
+                          <th className="p-3">Apprenant</th>
+                          <th className="p-3">Formation</th>
+                          <th className="p-3">Montant</th>
+                          <th className="p-3">Statut</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {filteredRegistrations.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-6 text-center text-slate-400">
+                              Aucune inscription locale en attente.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredRegistrations.map((reg) => (
+                            <tr key={reg.id} className="hover:bg-slate-50">
+                              <td className="p-3 font-medium text-slate-900">{reg.name}</td>
+                              <td className="p-3">{reg.courseTitle}</td>
+                              <td className="p-3 font-bold">{reg.amountFcfa.toLocaleString()} FCFA</td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  reg.status === 'Validé' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {reg.status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => handleSendWhatsAppNotification(reg)}
+                                  className="text-emerald-600 hover:text-emerald-700 font-bold mr-2"
+                                >
+                                  WhatsApp
+                                </button>
+                                <button
+                                  onClick={() => handleToggleStatus(reg.id)}
+                                  className="text-slate-600 hover:text-slate-900 font-bold"
+                                >
+                                  Changer statut
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: COMPTE À REBOURS & SETTINGS */}
+            {activeAdminTab === 'settings' && (
+              <div className="p-6 space-y-6">
+                <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <span>Contrôle du Compte à Rebours de Rentrée</span>
+                    </div>
+                    <p className="text-xs text-slate-600 max-w-xl">
+                      Ajustez le délai affiché sur le bandeau supérieur pour créer l'urgence de publication.
+                    </p>
+                  </div>
+
+                  <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 text-xs shadow-xs">
+                    <button
+                      onClick={() => handleResetCountdown(7)}
+                      className="px-3 py-1.5 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition cursor-pointer"
+                    >
+                      Chrono +7j
+                    </button>
+                    <button
+                      onClick={() => handleResetCountdown(14)}
+                      className="px-3 py-1.5 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition cursor-pointer"
+                    >
+                      Chrono +14j
+                    </button>
+                    <button
+                      onClick={() => handleResetCountdown(30)}
+                      className="px-3 py-1.5 text-slate-700 hover:text-amber-800 font-medium rounded-md hover:bg-amber-50 transition cursor-pointer"
+                    >
+                      Chrono +30j
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-white rounded-2xl border border-slate-200 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Remise à zéro pour la publication
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    Nettoie les sessions de test des apprenants en conservant les cours officiels enregistrés dans Firestore.
+                  </p>
+                  <button
+                    onClick={handleFullResetForPublication}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Réinitialiser les tests pour publication</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Footer */}
+          <div className="bg-slate-100 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <p>
+              Ephata Consulting Group · Contact Direction : <strong>+221 77 507 91 84</strong> · Sicap liberté 5A
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="px-5 py-2 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition cursor-pointer"
+              >
+                Fermer le panneau
+              </button>
             </div>
           </div>
+
         </div>
       </div>
-
-      {/* Footer */}
-        <div className="bg-slate-100 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <p>
-            Ephata Consulting Group · Contact Direction : <strong>+221 77 507 91 84</strong>
-          </p>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition"
-          >
-            Fermer le panneau
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </>
+    </>
   );
 };

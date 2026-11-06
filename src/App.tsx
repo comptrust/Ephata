@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Course, StudentProgress } from './types';
-import { COURSES, getCourseById } from './data/coursesData';
+import { COURSES as DEFAULT_COURSES } from './data/coursesData';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { CourseCatalog } from './components/CourseCatalog';
@@ -14,10 +14,18 @@ import { FinancialCalculatorModal } from './components/FinancialCalculatorModal'
 import { SerereAudioModal } from './components/SerereAudioModal';
 import { CoachingModal } from './components/CoachingModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
+import { AuthModal } from './components/AuthModal';
 import { Footer } from './components/Footer';
-import { MessageCircle, Award, Phone } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { useCourses } from './utils/courseStore';
+import { fetchRemoteStudentProgress, saveRemoteStudentProgress, db } from './lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
-export default function App() {
+function AppContent() {
+  const { currentUser, userProfile, isAdmin, openAuthModal } = useAuth();
+  const { courses } = useCourses();
+
   // Navigation & View state
   const [activeTab, setActiveTab] = useState<'catalog' | 'dashboard' | 'business-plans' | 'calculator' | 'serere-audio'>('catalog');
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
@@ -25,48 +33,39 @@ export default function App() {
   // Direction / Admin state
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-  // Student Profile & Progress (Reset for publication)
+  // Student Profile Name
   const [studentName, setStudentName] = useState<string>(() => {
-    const saved = localStorage.getItem('ephata_student_name');
-    if (!saved || saved === 'Moussa Ndiaye') {
-      localStorage.removeItem('ephata_student_name');
-      return '';
-    }
-    return saved;
+    return localStorage.getItem('ephata_student_name') || '';
   });
 
+  // Sync studentName with authenticated user
+  useEffect(() => {
+    if (currentUser?.displayName) {
+      setStudentName(currentUser.displayName);
+      localStorage.setItem('ephata_student_name', currentUser.displayName);
+    }
+  }, [currentUser]);
+
+  // Enrolled courses
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('ephata_enrolled_courses');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const isLegacyDemo = Array.isArray(parsed) && parsed.length === 1 && parsed[0] === 'pack-entrepreneuriat' && !localStorage.getItem('ephata_user_has_enrolled');
-        if (!isLegacyDemo && Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (e) {
-        // fallback
-      }
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) { /* ignore */ }
     }
-    // Clean slate for public launch: 0 enrolled courses until user enrolls!
     return [];
   });
 
+  // Learning Progress Map
   const [progressMap, setProgressMap] = useState<Record<string, StudentProgress>>(() => {
     const saved = localStorage.getItem('ephata_progress_map');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          const keys = Object.keys(parsed);
-          if (keys.length === 1 && keys[0] === 'pack-entrepreneuriat' && !localStorage.getItem('ephata_user_has_enrolled')) {
-            return {};
-          }
-          return parsed;
-        }
-      } catch (e) {
-        // fallback
-      }
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (e) { /* ignore */ }
     }
     return {};
   });
@@ -93,6 +92,35 @@ export default function App() {
     localStorage.setItem('ephata_progress_map', JSON.stringify(progressMap));
   }, [progressMap]);
 
+  // Sync with Firestore when user logs in
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Load cloud progress for each enrolled course
+    enrolledCourseIds.forEach(async (cId) => {
+      const remote = await fetchRemoteStudentProgress(currentUser.uid, cId);
+      if (remote) {
+        setProgressMap(prev => ({
+          ...prev,
+          [cId]: {
+            ...prev[cId],
+            ...remote,
+            completedLessonIds: Array.from(new Set([...(prev[cId]?.completedLessonIds || []), ...remote.completedLessonIds])),
+            notes: { ...(prev[cId]?.notes || {}), ...(remote.notes || {}) }
+          }
+        }));
+      }
+    });
+
+    // Save enrollment list to Firestore profile
+    try {
+      const uRef = doc(db, 'users', currentUser.uid);
+      setDoc(uRef, { enrolledCourses: enrolledCourseIds }, { merge: true });
+    } catch (e) {
+      // ignore
+    }
+  }, [currentUser, enrolledCourseIds]);
+
   // Listen to admin full reset for publication
   useEffect(() => {
     const handlePublicationReset = () => {
@@ -115,7 +143,7 @@ export default function App() {
     setCheckoutCourse(course);
   };
 
-  const handleConfirmEnrollment = (courseId: string) => {
+  const handleConfirmEnrollment = async (courseId: string) => {
     localStorage.setItem('ephata_user_has_enrolled', 'true');
     if (!enrolledCourseIds.includes(courseId)) {
       const updated = [...enrolledCourseIds, courseId];
@@ -132,6 +160,11 @@ export default function App() {
         notes: {}
       };
       setProgressMap(prev => ({ ...prev, [courseId]: newProg }));
+
+      // Save to Firestore if user is authenticated
+      if (currentUser) {
+        await saveRemoteStudentProgress(currentUser.uid, courseId, newProg);
+      }
     }
 
     // Direct navigate to classroom
@@ -145,15 +178,22 @@ export default function App() {
     setActiveCourseId(course.id);
   };
 
-  const handleUpdateProgress = (updated: StudentProgress) => {
+  const handleUpdateProgress = async (updated: StudentProgress) => {
     setProgressMap(prev => ({
       ...prev,
       [updated.courseId]: updated
     }));
+
+    // Secure persistent cloud storage in Firestore
+    if (currentUser) {
+      await saveRemoteStudentProgress(currentUser.uid, updated.courseId, updated);
+    }
   };
 
-  // If activeCourseId is set, show the Classroom view!
-  const currentClassroomCourse = activeCourseId ? getCourseById(activeCourseId) : null;
+  // Find active classroom course from dynamic courses
+  const currentClassroomCourse = activeCourseId 
+    ? (courses.find(c => c.id === activeCourseId) || DEFAULT_COURSES.find(c => c.id === activeCourseId))
+    : null;
 
   if (currentClassroomCourse) {
     const courseProgress = progressMap[currentClassroomCourse.id] || {
@@ -181,7 +221,7 @@ export default function App() {
         {/* Modals inside classroom */}
         <CertificateView
           course={currentClassroomCourse}
-          studentName={studentName}
+          studentName={studentName || currentUser?.displayName || 'Apprenant Ephata'}
           onUpdateStudentName={handleUpdateStudentName}
           isOpen={!!certificateCourse}
           onClose={() => setCertificateCourse(null)}
@@ -201,12 +241,14 @@ export default function App() {
           isOpen={isSerereAudioOpen}
           onClose={() => setIsSerereAudioOpen(false)}
         />
+
+        <AuthModal />
       </div>
     );
   }
 
   // Enrolled courses list
-  const enrolledCourses = COURSES.filter(c => enrolledCourseIds.includes(c.id));
+  const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id));
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -225,7 +267,7 @@ export default function App() {
           }
         }}
         enrolledCount={enrolledCourseIds.length}
-        onOpenQuickEnroll={() => setCheckoutCourse(COURSES[0])}
+        onOpenQuickEnroll={() => setCheckoutCourse(courses[0] || DEFAULT_COURSES[0])}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
       />
 
@@ -242,7 +284,7 @@ export default function App() {
             />
 
             <CourseCatalog
-              courses={COURSES}
+              courses={courses}
               enrolledCourseIds={enrolledCourseIds}
               onOpenDetails={(course) => setDetailCourse(course)}
               onStartCourse={handleStartCourse}
@@ -256,7 +298,7 @@ export default function App() {
           <StudentDashboard
             enrolledCourses={enrolledCourses}
             progressMap={progressMap}
-            studentName={studentName}
+            studentName={studentName || currentUser?.displayName || ''}
             onSelectCourse={handleStartCourse}
             onOpenCertificate={(course) => setCertificateCourse(course)}
             onExploreCatalog={() => setActiveTab('catalog')}
@@ -278,7 +320,7 @@ export default function App() {
             setActiveTab(tab);
           }
         }}
-        onOpenQuickEnroll={() => setCheckoutCourse(COURSES[0])}
+        onOpenQuickEnroll={() => setCheckoutCourse(courses[0] || DEFAULT_COURSES[0])}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
       />
 
@@ -314,8 +356,8 @@ export default function App() {
       />
 
       <CertificateView
-        course={certificateCourse || COURSES[0]}
-        studentName={studentName}
+        course={certificateCourse || courses[0] || DEFAULT_COURSES[0]}
+        studentName={studentName || currentUser?.displayName || 'Apprenant Ephata'}
         onUpdateStudentName={handleUpdateStudentName}
         isOpen={!!certificateCourse}
         onClose={() => setCertificateCourse(null)}
@@ -339,7 +381,7 @@ export default function App() {
       <CoachingModal
         isOpen={isCoachingOpen}
         onClose={() => setIsCoachingOpen(false)}
-        defaultName={studentName}
+        defaultName={studentName || currentUser?.displayName || ''}
       />
 
       {/* Admin Panel Modal */}
@@ -347,6 +389,17 @@ export default function App() {
         isOpen={isAdminPanelOpen}
         onClose={() => setIsAdminPanelOpen(false)}
       />
+
+      {/* Authentication Modal */}
+      <AuthModal />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

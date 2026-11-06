@@ -12,9 +12,13 @@ import {
   Sparkles, 
   Plus,
   Play,
-  FileText
+  FileText,
+  ShieldCheck,
+  LogIn,
+  UserCheck
 } from 'lucide-react';
 import { handleImgError } from '../utils/imageFallback';
+import { useAuth } from '../context/AuthContext';
 
 interface StudentDashboardProps {
   enrolledCourses: Course[];
@@ -35,6 +39,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onExploreCatalog,
   onOpenCoaching
 }) => {
+  const { currentUser, openAuthModal, isAdmin } = useAuth();
+
   // Compute overall stats
   let totalLessonsCompleted = 0;
   let totalLessonsOverall = 0;
@@ -52,18 +58,51 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }
   });
 
+  const displayName = currentUser?.displayName || studentName || 'Cher Apprenant';
+
   return (
     <div className="py-10 bg-slate-50 min-h-[80vh]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Cloud Sync Notice if Not Logged In */}
+        {!currentUser && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-blue-500/10 to-amber-500/5 border border-amber-300/80 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-500 text-slate-950 rounded-xl shrink-0 mt-0.5">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Synchronisez votre progression & sécurisez vos attestations
+                </h3>
+                <p className="text-xs text-slate-600 max-w-xl">
+                  Connectez-vous avec Google ou créez votre compte apprenant pour retrouver vos leçons terminées, vos notes privées et vos certificats sur n'importe quel ordinateur ou téléphone.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => openAuthModal('signup')}
+              className="px-4 py-2.5 bg-[#0A2540] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            >
+              <LogIn className="w-4 h-4 text-amber-400" />
+              <span>Créer mon compte / Connexion</span>
+            </button>
+          </div>
+        )}
+
         {/* Welcome Banner */}
         <div className="bg-[#0A2540] text-white rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest">
               <GraduationCap className="w-4 h-4" />
               <span>Espace Apprenant Ephata Consulting</span>
+              {currentUser && (
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] rounded-full border border-emerald-400/30">
+                  ✓ Synchronisé Cloud
+                </span>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Bienvenue, {studentName || 'Cher Apprenant'} !
+              Bienvenue, {displayName} !
             </h1>
             <p className="text-sm text-slate-300 max-w-xl">
               Retrouvez l'ensemble de vos cours en ligne, suivez votre progression en temps réel et téléchargez vos attestations officielles certifiées.

@@ -12,8 +12,12 @@ import {
   Menu, 
   X,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  LogIn,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 import { LaunchCountdown } from './LaunchCountdown';
 
@@ -33,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminPanel
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { currentUser, isAdmin, openAuthModal, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs backdrop-blur-md bg-white/95">
@@ -58,10 +63,14 @@ export const Header: React.FC<HeaderProps> = ({
             {onOpenAdminPanel && (
               <button
                 onClick={onOpenAdminPanel}
-                className="inline-flex items-center gap-1 text-slate-300 hover:text-amber-300 transition text-[11px]"
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                  isAdmin 
+                    ? 'bg-amber-400 text-slate-950 shadow-xs' 
+                    : 'text-slate-300 hover:text-amber-300'
+                }`}
               >
                 <ShieldCheck className="w-3 h-3 text-amber-400" />
-                <span>Direction / Inscriptions</span>
+                <span>{isAdmin ? 'Alouise Admin · Direction' : 'Direction / Inscriptions'}</span>
               </button>
             )}
             <span className="hidden lg:inline text-slate-500">·</span>
@@ -153,19 +162,74 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5">
+            {/* Auth / Account Profile Button */}
+            {currentUser ? (
+              <div className="flex items-center gap-2 pl-2 border-r border-slate-200 pr-2">
+                <div className="flex items-center gap-2">
+                  {currentUser.photoURL ? (
+                    <img
+                      src={currentUser.photoURL}
+                      alt={currentUser.displayName || 'Utilisateur'}
+                      className="w-7 h-7 rounded-full object-cover border border-amber-500 shadow-2xs"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-[#0A2540] text-amber-400 font-bold text-xs flex items-center justify-center">
+                      {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="text-left hidden xl:block">
+                    <p className="text-xs font-bold text-slate-900 leading-none truncate max-w-[110px]">
+                      {currentUser.displayName || currentUser.email?.split('@')[0]}
+                    </p>
+                    <span className="text-[10px] text-emerald-600 font-bold">
+                      {isAdmin ? 'Alouise Admin' : 'Étudiant Connecté'}
+                    </span>
+                  </div>
+                </div>
+
+                {isAdmin && onOpenAdminPanel && (
+                  <button
+                    onClick={onOpenAdminPanel}
+                    className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer transition"
+                    title="Ouvrir le studio d'administration"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Studio Admin</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => signOut()}
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                  title="Déconnexion"
+                  aria-label="Déconnexion"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => openAuthModal('login')}
+                className="px-3 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200"
+              >
+                <LogIn className="w-3.5 h-3.5 text-amber-600" />
+                <span>Connexion</span>
+              </button>
+            )}
+
             <button
               onClick={() => onSelectTab('dashboard')}
-              className={`px-3.5 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 border transition-all ${
+              className={`px-3 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 border transition-all cursor-pointer ${
                 activeTab === 'dashboard'
                   ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
                   : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
               }`}
             >
               <GraduationCap className="w-4 h-4 text-amber-600" />
-              <span>Mon Espace Apprenant</span>
+              <span>Mon Espace</span>
               {enrolledCount > 0 && (
-                <span className="w-5 h-5 bg-amber-500 text-white rounded-full text-xs font-bold flex items-center justify-center">
+                <span className="w-4 h-4 bg-amber-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
                   {enrolledCount}
                 </span>
               )}
@@ -173,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onOpenQuickEnroll}
-              className="px-4 py-2 text-sm font-bold text-white bg-[#0A2540] hover:bg-[#0d345a] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2 text-xs font-bold text-white bg-[#0A2540] hover:bg-[#0d345a] rounded-lg shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>S'inscrire / Payer</span>
             </button>

@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role (student or admin) and basic metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "Full name of the user" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "User role" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of account creation" },
+        "lastLoginAt": { "type": "string", "description": "ISO timestamp of last login" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Progress tracking for a student on a specific course",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the student" },
+        "courseId": { "type": "string", "description": "ID of the course" },
+        "completedLessonIds": { "type": "array", "description": "List of completed lesson IDs" },
+        "certificateEarnedDate": { "type": "string", "description": "ISO timestamp when certificate was unlocked" },
+        "notes": { "type": "object", "description": "Student private notes indexed by lesson ID" },
+        "quizScores": { "type": "object", "description": "Quiz scores indexed by module ID" },
+        "lastUpdated": { "type": "string", "description": "ISO timestamp of last activity" }
+      },
+      "required": ["userId", "courseId", "completedLessonIds", "lastUpdated"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Course created or managed by Admin (Alouise)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique course identifier" },
+        "title": { "type": "string", "description": "Title of the course" },
+        "subtitle": { "type": "string", "description": "Short subtitle or hook" },
+        "description": { "type": "string", "description": "Full course overview" },
+        "category": { "type": "string", "description": "Course category" },
+        "price": { "type": "number", "description": "Price in FCFA" },
+        "originalPrice": { "type": "number", "description": "Original crossed-out price" },
+        "duration": { "type": "string", "description": "Duration (e.g. 20H, 35H, 90 Jours)" },
+        "rating": { "type": "number", "description": "Review score (out of 5)" },
+        "enrolledCount": { "type": "number", "description": "Total students enrolled" },
+        "imageUrl": { "type": "string", "description": "Cover banner image URL" },
+        "posterUrl": { "type": "string", "description": "Official flyer screenshot URL" },
+        "authorId": { "type": "string", "description": "Admin UID who submitted the course" },
+        "status": { "type": "string", "enum": ["published", "draft"], "description": "Publication status" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of creation" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["id", "title", "category", "price", "status"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "Course enrollment record for a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Enrollment document ID" },
+        "userId": { "type": "string", "description": "Student UID" },
+        "userEmail": { "type": "string", "description": "Student email" },
+        "courseId": { "type": "string", "description": "Course ID" },
+        "courseTitle": { "type": "string", "description": "Course title" },
+        "amount": { "type": "number", "description": "Amount paid in FCFA" },
+        "paymentMethod": { "type": "string", "description": "Wave, Orange Money, or Inscription Gratuite" },
+        "status": { "type": "string", "enum": ["active", "pending", "completed"], "description": "Enrollment status" },
+        "enrolledAt": { "type": "string", "description": "ISO timestamp of enrollment" }
+      },
+      "required": ["userId", "courseId", "status", "enrolledAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "entities.User" },
+      "description": "User profiles. Students can read/write their own profile; admins can read all profiles."
+    },
+    "/users/{userId}/progress/{courseId}": {
+      "schema": { "$ref": "entities.UserProgress" },
+      "description": "Student private course progress, completed lessons, and personal notes."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "entities.Course" },
+      "description": "Published courses readable by everyone, writable only by authenticated Admins."
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": { "$ref": "entities.Enrollment" },
+      "description": "Course enrollments. Students can read their own enrollments; admins can read and manage all."
+    }
+  }
+}
